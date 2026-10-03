@@ -2,18 +2,21 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 const TripInput = z.object({
-  destination: z.string().min(2),
-  startDate: z.string(),
-  endDate: z.string(),
+  destination: z.string().trim().min(2).max(200),
+  startDate: z.string().date(),
+  endDate: z.string().date(),
   budget: z.coerce.number().positive(),
-  travelers: z.coerce.number().int().positive(),
-  status: z.string(),
-  interests: z.string().optional(),
-  transport: z.string()
-});
+  travelers: z.coerce.number().int().positive().max(100),
+  status: z.enum(["Active Duty", "Reserve / Guard", "Veteran", "Retired", "Military Family"]),
+  interests: z.string().max(1000).optional(),
+  transport: z.enum(["Driving", "Flying", "Either"])
+}).refine(input => input.endDate >= input.startDate, { message: "End date must be on or after start date", path: ["endDate"] });
 
 export async function POST(req: Request) {
-  const parsed = TripInput.safeParse(await req.json());
+  let input: unknown;
+  try { input = await req.json(); }
+  catch { return NextResponse.json({error: "Invalid JSON body"}, {status:400}); }
+  const parsed = TripInput.safeParse(input);
   if (!parsed.success) return NextResponse.json({error: parsed.error.flatten()}, {status:400});
 
   // NEXT SPRINT:

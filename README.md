@@ -1,72 +1,76 @@
-# MilBenefit Trips — MVP Starter
+# DutyPerks MVP
 
-A mobile-first PWA concept for:
-1. finding verified military benefits nearby; and
-2. generating trips optimized around eligible benefits and estimated savings.
+Next.js 15 + React 19 + strict TypeScript, with a Supabase/PostGIS schema.
 
-## Product rule
-AI is an organizer, not the source of truth. A military discount may be presented as verified only when a structured benefit record has a verification source/date and is currently valid.
-
-## Stack
-- Next.js + TypeScript
-- Supabase/PostgreSQL + PostGIS
-- PWA-first responsive web interface
-- Map/location provider added in Sprint 2
-- Payment/affiliate integrations added only after validation
+## Current scope
+Home, Explore, Plan, and a demo verification queue render. POST `/api/trips/generate`
+validates a request and returns a prototype response. Explore does not fetch
+benefits; Plan does not generate or save itineraries; Admin is a static demo.
+Login, maps, bookings, payments, and PWA installation are not implemented.
+Deploying publishes a prototype, not a finished benefits service.
 
 ## Local setup
-1. Install Node 20+.
-2. `npm install`
-3. Copy `.env.example` to `.env.local`.
-4. Create a Supabase project and run `supabase/schema.sql`.
-5. Add Supabase environment variables.
-6. `npm run dev`
+1. Install Node.js 22 LTS and pnpm 11.25.0.
+2. Run `pnpm install --frozen-lockfile`.
+3. Copy `.env.example` to `.env.local` and fill it from Supabase settings.
+   The prototype builds and runs without environment variables.
+4. Run `pnpm dev` and open http://localhost:3000.
+5. Validate changes with `pnpm lint`, `pnpm build`, then `pnpm typecheck`.
 
-## Sprint 1 (included)
-- Core national-ready schema
-- Explore and Plan entry screens
-- Trip request validation
-- Verification/provenance model
-- Savings data model
-- Affiliate/bookings data model
+Use the committed pnpm lockfile; do not mix npm and pnpm lockfiles.
+CI runs the frozen install, ESLint, production build, and TypeScript on Node 22.
 
-## Sprint 2
-- Geocoding and radius search
-- Admin CRUD + verification queue
-- Seed first verified San Diego records
-- Real benefit result cards
-- Map/list toggle
-- Persist trips
-- Itinerary ranking engine
-- Analytics events
+## Supabase setup
+1. Create a project. Store its database password securely outside GitHub.
+2. In SQL Editor, on a **new empty project**, run `supabase/schema.sql` once.
+   It installs PostGIS. If PostGIS already exists in another schema, include that
+   schema in the SQL session search path before running the scripts.
+3. If the original schema is already installed, run **only**
+   `supabase/security.sql` instead. Do not rerun creation over existing data.
+4. Optionally run `supabase/seed_candidates.sql`. It inserts five pending,
+   unverified candidates and is safe to rerun by ID.
+5. Copy the project URL and publishable key from project settings into
+   `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`.
+   A legacy anon key can be used as the publishable-key variable value.
+6. Confirm all ten tables have RLS enabled. Browser roles have no grants or
+   policies yet; manage records through SQL Editor only.
 
-## Sprint 3
-- AI itinerary composition constrained to retrieved records
-- Live travel inventory/provider integration
-- Affiliate attribution
-- Business claim flow
-- Featured listings/payments
-- PWA manifest/install polish
+The server-only helper uses a publishable key, respecting RLS. No service-role
+key is required. No screen calls the database yet; configuring Supabase does
+not automatically enable Explore or Admin.
 
-## MVP metrics
-Do not optimize for downloads. Measure:
-- search -> benefit-detail CTR
-- trip-plan completion
-- outbound booking/offer clicks
-- repeat users
-- incorrect-info report rate
-- verified benefit coverage by destination
-- estimated savings per completed itinerary
+## Trust and access rules
+The verified view requires verified status, a started and unexpired offer, a
+dated HTTPS verification source, and no overdue review. Pending seeds must never
+be presented as verified. The view uses security_invoker to respect RLS.
+Access stays closed until narrow public-read policies, safe public columns,
+authenticated trip-owner policies, and admin authorization are implemented.
+Never bypass permission errors by exposing a service-role key.
 
-## Sprint 2 update
-Added:
-- `app/admin/page.tsx` verification-queue shell
-- `supabase/seed_candidates.sql` with five San Diego candidate offers
-- Seed records default to `pending`; public view remains verified-only
-- Time-bounded offers include explicit start/end dates
+## Deploy on Vercel
+1. Merge the preparation pull request after its checks pass.
+2. Choose Add New Project in Vercel and import `CFitz95/DutyPerks`.
+3. Framework: Next.js. Root: repository root. Node version: 22.x.
+4. Install: `pnpm install --frozen-lockfile`. Build: `pnpm build`.
+   Leave the output directory at its Next.js default.
+5. Add both variables from `.env.example` to Production and Preview settings.
+   Use separate preview database projects when live database features are added.
+6. Deploy and check /, /explore, /plan, and /admin. A valid Plan submission should
+   return a prototype response; a reversed date range should show an error.
+7. Redeploy after environment changes. Add a domain after this smoke check.
 
-Next engineering step:
-- connect admin actions to Supabase
-- add geocoding/radius RPC
-- replace candidate source notes with direct primary-source verification URLs
-- render verified cards in `/explore`
+## Secrets
+Ignore rules exclude environment files, dependencies, build output, Vercel local
+settings, logs, private keys, and ZIP archives. The example has placeholders.
+Ignore rules do not untrack files or protect manual GitHub uploads. Inspect
+`git diff --cached` and `git ls-files` before committing. If a credential is
+published, rotate/revoke it immediately; file deletion does not erase history.
+
+## Next engineering work
+Implement authenticated admin verification and narrow public reads, verified
+result cards, geocoding/radius search, then saved trips and itinerary ranking.
+AI may organize verified records, never invent eligibility or savings.
+
+References: [Supabase RLS](https://supabase.com/docs/guides/database/postgres/row-level-security),
+[API keys](https://supabase.com/docs/guides/getting-started/api-keys),
+[Next.js on Vercel](https://vercel.com/docs/frameworks/full-stack/nextjs).

@@ -1,5 +1,3 @@
-"use client";
-import { useState } from "react";
 
 const sample = [
   ["USS Midway Museum","Military admission","Pending verification"],
@@ -10,10 +8,10 @@ const sample = [
 ];
 
 export default function AdminPage() {
-  const [rows,setRows]=useState(sample);
+  const rows = sample;
   return <main>
     <h1>Verification queue</h1>
-    <p>Nothing becomes public until a source is checked and the record is marked verified.</p>
+    <p>Demo queue only. These sample records are unverified; no database records are displayed or changed here. Admin authentication and editing are not implemented.</p>
     <table cellPadding={10} style={{borderCollapse:"collapse",width:"100%"}}>
       <thead><tr><th align="left">Business</th><th align="left">Benefit</th><th align="left">State</th></tr></thead>
       <tbody>{rows.map((r,i)=><tr key={i} style={{borderTop:"1px solid #ddd"}}>{r.map((c,j)=><td key={j}>{c}</td>)}</tr>)}</tbody>

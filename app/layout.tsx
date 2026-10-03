@@ -1,7 +1,7 @@
 import React from "react";
 
 export const metadata = {
-  title: "MilBenefit Trips",
+  title: "DutyPerks",
   description: "Find verified military benefits nearby and build benefit-optimized trips."
 };
 
