@@ -4,8 +4,8 @@ Next.js 15 + React 19 + strict TypeScript, with a Supabase/PostGIS schema.
 
 ## Current scope
 Home, Explore, Plan, and a demo verification queue render. POST `/api/trips/generate`
-validates a request and returns a prototype response. Explore does not fetch
-benefits; Plan does not generate or save itineraries; Admin is a static demo.
+validates a request and returns a prototype response. Explore queries verified benefits through a bounded public search function;
+Plan does not generate or save itineraries; Admin is a static demo.
 Login, maps, bookings, payments, and PWA installation are not implemented.
 Deploying publishes a prototype, not a finished benefits service.
 
@@ -32,23 +32,27 @@ CI runs the frozen install, ESLint, production build, and TypeScript on Node 22.
 5. Copy the project URL and publishable key from project settings into
    `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`.
    A legacy anon key can be used as the publishable-key variable value.
-6. Confirm all ten tables have RLS enabled. Browser roles have no grants or
-   policies yet; manage records through SQL Editor only.
+6. Run `supabase/explore.sql` to enable the read-only Explore search.
+   It exposes safe fields only; all base tables and writes remain closed.
+7. Optionally run `supabase/test_explore.sql` for rollback-only regression checks.
 
-The server-only helper uses a publishable key, respecting RLS. No service-role
-key is required. No screen calls the database yet; configuring Supabase does
-not automatically enable Explore or Admin.
+The server-only helper uses a publishable key. No service-role key is required.
+Explore uses search_verified_benefits: a deliberate SECURITY DEFINER function
+with a fixed empty search_path, explicit safe columns, current verification checks,
+and a maximum of 100 results. It grants no direct table access or write access.
+City, City, ST, and ZIP searches are exact matches; no distance search yet.
+Pending starter records remain hidden. Admin editing is still not implemented.
 
 ## Trust and access rules
 The verified view requires verified status, a started and unexpired offer, a
 dated HTTPS verification source, and no overdue review. Pending seeds must never
 be presented as verified. The view uses security_invoker to respect RLS.
-Access stays closed until narrow public-read policies, safe public columns,
-authenticated trip-owner policies, and admin authorization are implemented.
+Base tables stay closed. Explore uses its limited search function.
+Authenticated trip-owner policies and admin authorization remain future work.
 Never bypass permission errors by exposing a service-role key.
 
 ## Deploy on Vercel
-1. Merge the preparation pull request after its checks pass.
+1. Commit the prepared source update to GitHub after validation.
 2. Choose Add New Project in Vercel and import `CFitz95/DutyPerks`.
 3. Framework: Next.js. Root: repository root. Node version: 22.x.
 4. Install: `pnpm install --frozen-lockfile`. Build: `pnpm build`.
@@ -67,8 +71,8 @@ Ignore rules do not untrack files or protect manual GitHub uploads. Inspect
 published, rotate/revoke it immediately; file deletion does not erase history.
 
 ## Next engineering work
-Implement authenticated admin verification and narrow public reads, verified
-result cards, geocoding/radius search, then saved trips and itinerary ranking.
+Implement authenticated admin verification, geocoding/radius search,
+then saved trips and itinerary ranking.
 AI may organize verified records, never invent eligibility or savings.
 
 References: [Supabase RLS](https://supabase.com/docs/guides/database/postgres/row-level-security),
