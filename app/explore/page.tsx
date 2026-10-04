@@ -41,13 +41,24 @@ export default async function Explore({ searchParams }: { searchParams: Promise<
   let benefits: z.infer<typeof Benefits> = [];
   let error: string | null = invalid ? "Please use a city or ZIP and select one of the listed filters." : null;
   if (!invalid) {
+    let stage = "configuration";
     try {
-      const { data, error: queryError } = await supabaseServer().rpc("search_verified_benefits", {
+      const client = supabaseServer();
+      stage = "connection";
+      const { data, error: queryError, status: responseStatus } = await client.rpc("search_verified_benefits", {
         p_location: location, p_status: status, p_category: category
       });
-      if (queryError) throw new Error("Benefits query failed");
+      if (queryError) {
+        console.error("DutyPerks Explore query failed", {
+          status: responseStatus,
+          code: /^[A-Z0-9]{1,24}$/.test(queryError.code ?? "") ? queryError.code : "unavailable"
+        });
+        throw new Error("Benefits query failed");
+      }
+      stage = "response validation";
       benefits = Benefits.parse(data);
     } catch {
+      console.error("DutyPerks Explore failure", { stage });
       error = "We couldn’t load benefits right now. Please try again shortly.";
     }
   }
