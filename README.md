@@ -1,80 +1,111 @@
-# DutyPerks MVP
+import Link from "next/link";
+import { z } from "zod";
+import { supabaseServer } from "../../lib/supabase";
 
-Next.js 15 + React 19 + strict TypeScript, with a Supabase/PostGIS schema.
+export const dynamic = "force-dynamic";
 
-## Current scope
-Home, Explore, Plan, and a demo verification queue render. POST `/api/trips/generate`
-validates a request and returns a prototype response. Explore queries verified benefits through a bounded public search function;
-Plan does not generate or save itineraries; Admin is a static demo.
-Login, maps, bookings, payments, and PWA installation are not implemented.
-Deploying publishes a prototype, not a finished benefits service.
+const statuses = [
+  ["active_duty", "Active Duty"], ["reserve_guard", "Reserve / Guard"],
+  ["veteran", "Veteran"], ["retired", "Retired"], ["family", "Military Family"]
+] as const;
+const categories = [
+  ["food", "Food"], ["hotel", "Hotels"], ["attraction", "Attractions"],
+  ["tour", "Tours"], ["entertainment", "Entertainment"], ["shopping", "Shopping"],
+  ["automotive", "Automotive"], ["fitness", "Fitness"], ["education", "Education"],
+  ["financial", "Financial"]
+] as const;
+const SourceUrl = z.string().url().refine(url => new URL(url).protocol === "https:");
+const Benefits = z.array(z.object({
+  id: z.string().uuid(), title: z.string(), description: z.string(),
+  category: z.string(), requirements: z.string().nullable(),
+  business_name: z.string(), city: z.string(), state: z.string(),
+  postal_code: z.string().nullable(), eligibility: z.array(z.string()),
+  source_url: SourceUrl, source_name: z.string().nullable(),
+  verified_at: z.string().datetime({ offset: true }),
+  expires_at: z.string().date().nullable()
+})).max(100);
+type Params = Record<string, string | string[] | undefined>;
+const single = (value: Params[string]) => typeof value === "string" ? value : "";
+const dateLabel = (value: string) => value.slice(0, 10);
+const eligibilityLabel = (value: string) => statuses.find(([key]) => key === value)?.[1] ?? value;
 
-## Local setup
-1. Install Node.js 22 LTS and pnpm 11.25.0.
-2. Run `pnpm install --frozen-lockfile`.
-3. Copy `.env.example` to `.env.local` and fill it from Supabase settings.
-   The prototype builds and runs without environment variables.
-4. Run `pnpm dev` and open http://localhost:3000.
-5. Validate changes with `pnpm lint`, `pnpm build`, then `pnpm typecheck`.
-
-Use the committed pnpm lockfile; do not mix npm and pnpm lockfiles.
-CI runs the frozen install, ESLint, production build, and TypeScript on Node 22.
-
-## Supabase setup
-1. Create a project. Store its database password securely outside GitHub.
-2. In SQL Editor, on a **new empty project**, run `supabase/schema.sql` once.
-   It installs PostGIS. If PostGIS already exists in another schema, include that
-   schema in the SQL session search path before running the scripts.
-3. If the original schema is already installed, run **only**
-   `supabase/security.sql` instead. Do not rerun creation over existing data.
-4. Optionally run `supabase/seed_candidates.sql`. It inserts five pending,
-   unverified candidates and is safe to rerun by ID.
-5. Copy the project URL and publishable key from project settings into
-   `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`.
-   A legacy anon key can be used as the publishable-key variable value.
-6. Run `supabase/explore.sql` to enable the read-only Explore search.
-   It exposes safe fields only; all base tables and writes remain closed.
-7. Optionally run `supabase/test_explore.sql` for rollback-only regression checks.
-
-The server-only helper uses a publishable key. No service-role key is required.
-Explore uses search_verified_benefits: a deliberate SECURITY DEFINER function
-with a fixed empty search_path, explicit safe columns, current verification checks,
-and a maximum of 100 results. It grants no direct table access or write access.
-City, City, ST, and ZIP searches are exact matches; no distance search yet.
-Pending starter records remain hidden. Admin editing is still not implemented.
-
-## Trust and access rules
-The verified view requires verified status, a started and unexpired offer, a
-dated HTTPS verification source, and no overdue review. Pending seeds must never
-be presented as verified. The view uses security_invoker to respect RLS.
-Base tables stay closed. Explore uses its limited search function.
-Authenticated trip-owner policies and admin authorization remain future work.
-Never bypass permission errors by exposing a service-role key.
-
-## Deploy on Vercel
-1. Commit the prepared source update to GitHub after validation.
-2. Choose Add New Project in Vercel and import `CFitz95/DutyPerks`.
-3. Framework: Next.js. Root: repository root. Node version: 22.x.
-4. Install: `pnpm install --frozen-lockfile`. Build: `pnpm build`.
-   Leave the output directory at its Next.js default.
-5. Add both variables from `.env.example` to Production and Preview settings.
-   Use separate preview database projects when live database features are added.
-6. Deploy and check /, /explore, /plan, and /admin. A valid Plan submission should
-   return a prototype response; a reversed date range should show an error.
-7. Redeploy after environment changes. Add a domain after this smoke check.
-
-## Secrets
-Ignore rules exclude environment files, dependencies, build output, Vercel local
-settings, logs, private keys, and ZIP archives. The example has placeholders.
-Ignore rules do not untrack files or protect manual GitHub uploads. Inspect
-`git diff --cached` and `git ls-files` before committing. If a credential is
-published, rotate/revoke it immediately; file deletion does not erase history.
-
-## Next engineering work
-Implement authenticated admin verification, geocoding/radius search,
-then saved trips and itinerary ranking.
-AI may organize verified records, never invent eligibility or savings.
-
-References: [Supabase RLS](https://supabase.com/docs/guides/database/postgres/row-level-security),
-[API keys](https://supabase.com/docs/guides/getting-started/api-keys),
-[Next.js on Vercel](https://vercel.com/docs/frameworks/full-stack/nextjs).
+export default async function Explore({ searchParams }: { searchParams: Promise<Params> }) {
+  const params = await searchParams;
+  const location = single(params.location).trim();
+  const status = single(params.status);
+  const category = single(params.category);
+  const invalid = location.length > 120 ||
+    (status !== "" && !statuses.some(([key]) => key === status)) ||
+    (category !== "" && !categories.some(([key]) => key === category)) ||
+    ["location", "status", "category"].some(key => Array.isArray(params[key]));
+  let benefits: z.infer<typeof Benefits> = [];
+  let error: string | null = invalid ? "Please use a city or ZIP and select one of the listed filters." : null;
+  if (!invalid) {
+    let stage = "configuration";
+    try {
+      const client = supabaseServer();
+      stage = "connection";
+      const { data, error: queryError, status: responseStatus } = await client.rpc("search_verified_benefits", {
+        p_location: location, p_status: status, p_category: category
+      });
+      if (queryError) {
+        console.error("DutyPerks Explore query failed", {
+          status: responseStatus,
+          code: /^[A-Z0-9]{1,24}$/.test(queryError.code ?? "") ? queryError.code : "unavailable"
+        });
+        throw new Error("Benefits query failed");
+      }
+      stage = "response validation";
+      benefits = Benefits.parse(data);
+    } catch {
+      console.error("DutyPerks Explore failure", { stage });
+      error = "We couldn’t load benefits right now. Please try again shortly.";
+    }
+  }
+  return (
+    <main>
+      <Link href="/">← DutyPerks home</Link>
+      <h1>Explore verified benefits</h1>
+      <p>Search by city or ZIP and military status. Only currently valid, verified offers appear.</p>
+      <p>City and ZIP searches are exact matches. Distance and nearby-radius search are coming later.</p>
+      <form action="/explore" method="get" style={{ display: "grid", gap: 12, maxWidth: 520 }}>
+        <label>City or ZIP<br />
+          <input name="location" defaultValue={location.slice(0, 120)} maxLength={120} placeholder="San Diego, CA or 92101" />
+        </label>
+        <label>Military status<br />
+          <select name="status" defaultValue={statuses.some(([key]) => key === status) ? status : ""}>
+            <option value="">All statuses</option>
+            {statuses.map(([key, label]) => <option key={key} value={key}>{label}</option>)}
+          </select>
+        </label>
+        <label>Category<br />
+          <select name="category" defaultValue={categories.some(([key]) => key === category) ? category : ""}>
+            <option value="">All categories</option>
+            {categories.map(([key, label]) => <option key={key} value={key}>{label}</option>)}
+          </select>
+        </label>
+        <button type="submit">Find benefits</button>
+        <Link href="/explore">Clear filters</Link>
+      </form>
+      <section aria-label="Search results" style={{ marginTop: 24 }}>
+        {error ? <p role="alert">{error} <Link href="/explore">Try again</Link></p> :
+          benefits.length === 0 ? <p role="status">No verified benefits match your search yet. Try another city or clear the filters. Unverified offers are kept hidden.</p> :
+          <>
+            <p>{benefits.length === 100 ? "Showing the first 100 matches. Use filters to narrow your search." : `${benefits.length} verified ${benefits.length === 1 ? "benefit" : "benefits"} found.`}</p>
+            {benefits.map(benefit => (
+              <article key={benefit.id} style={{ border: "1px solid #ddd", padding: 16, marginBottom: 16, borderRadius: 8 }}>
+                <p><strong>{benefit.business_name}</strong> · {benefit.city}, {benefit.state}</p>
+                <h2>{benefit.title}</h2>
+                <p>{benefit.description}</p>
+                <p><strong>Eligibility:</strong> {benefit.eligibility.length ? benefit.eligibility.map(eligibilityLabel).join(", ") : "Check the source for eligibility."}</p>
+                {benefit.requirements && <p><strong>Requirements:</strong> {benefit.requirements}</p>}
+                <p>Verified {dateLabel(benefit.verified_at)}{benefit.expires_at ? ` · Offer ends ${benefit.expires_at}` : ""}</p>
+                <a href={benefit.source_url} target="_blank" rel="noopener noreferrer">View verification source{benefit.source_name ? `: ${benefit.source_name}` : ""}</a>
+                <p>Confirm terms with the provider before booking.</p>
+              </article>
+            ))}
+          </>}
+      </section>
+    </main>
+  );
+}
