@@ -6,10 +6,11 @@ const adminId='22222222-2222-4222-8222-222222222222';
 const candidateId='33333333-3333-4333-8333-333333333333';
 const sourceId='44444444-4444-4444-8444-444444444444';
 const secret='fixture-cron-'+'a'.repeat(40);
-let databaseCalls=0,lastReview,lastSnapshot,lastFinish,leaseBusy=true,robotsBlocked=false;
+let databaseCalls=0,lastReview,lastSnapshot,lastFinish,leaseBusy=true,robotsBlocked=false,pdfSource=false;
 const mock=http.createServer(async(req,res)=>{
   const u=new URL(req.url,'http://localhost');res.setHeader('Content-Type','application/json');
   if(u.pathname==='/fixture'){
+    if(new URL(u.searchParams.get('url')).pathname==='/modules/media/') {res.setHeader('Content-Type','application/pdf');res.end('%PDF-1.7 fixture MWR ticket catalog');return;}
     res.setHeader('Content-Type','text/html');
     if(new URL(u.searchParams.get('url')).pathname==='/robots.txt') res.end(robotsBlocked?'User-agent: *\nDisallow: /':'User-agent: *\nAllow: /');
     else res.end('<title>Official Fixture</title><p>Military admission with ID</p><a href="/military/">Military offers</a>');
@@ -25,7 +26,7 @@ const mock=http.createServer(async(req,res)=>{
   if(u.pathname==='/rest/v1/rpc/finish_discovery_run'){let s='';for await(const c of req)s+=c;lastFinish=JSON.parse(s);res.end('null');return;}
   if(u.pathname==='/rest/v1/rpc/review_discovery_offer'){let s='';for await(const c of req)s+=c;lastReview=JSON.parse(s);res.end(JSON.stringify(adminId));return;}
   const rows={
-   discovery_sources:[{id:sourceId,url:'https://navysealmuseumsd.org/visit/',business_id:adminId,location_id:adminId,last_hash:'a'.repeat(64),last_checked_at:null,last_error:null,enabled:true}],
+   discovery_sources:[{id:sourceId,url:pdfSource?'https://whidbey.navylifepnw.com/modules/media/?do=download&id=fixture':'https://navysealmuseumsd.org/visit/',business_id:adminId,location_id:adminId,last_hash:'a'.repeat(64),last_checked_at:null,last_error:null,enabled:true}],
    discovery_candidates:[{id:candidateId,source_id:sourceId,fingerprint:'a'.repeat(64),title:'Private candidate fixture',excerpt:'Unverified military source evidence',kind:'new',state:'pending',discovered_at:'2026-10-04T00:00:00Z'}],
    discovery_runs:[],benefits:[],benefit_eligibility:[],businesses:[{id:adminId,name:'Fixture Museum'}]
   };
@@ -37,6 +38,9 @@ const app=spawn(process.execPath,['--require',decodeURIComponent(preload),'node_
 try{
  await new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(Error('start timeout')),30000);app.stdout.on('data',d=>{if(d.toString().includes('Ready')){clearTimeout(timer);resolve();}});app.on('exit',code=>reject(Error('App exited '+code)));});
  let r=await fetch(origin+'/admin');let html=await r.text();assert.match(html,/Offer review sign-in/);assert.doesNotMatch(html,/Private candidate fixture/);assert.equal(databaseCalls,0);console.log('Anonymous admin page exposes no queue or database requests');
+ r=await fetch(origin+'/explore?location=Whidbey%20Island');html=await r.text();assert.match(html,/NAS Whidbey Island MWR Tickets/);assert.doesNotMatch(html,/Naval Base San Diego MWR Tickets/);assert.match(html,/separate from the verified benefit results/);
+ r=await fetch(origin+'/explore?location=San%20Diego');html=await r.text();assert.match(html,/Naval Base San Diego MWR Tickets/);assert.doesNotMatch(html,/NAS Whidbey Island MWR Tickets/);
+ databaseCalls=0;console.log('Official MWR resources follow the selected region and remain separate from verified offers');
  r=await fetch(origin+'/admin',{headers:{Cookie:'dutyperks-admin=other-token'}});html=await r.text();assert.doesNotMatch(html,/Private candidate fixture/);assert.equal(databaseCalls,0);console.log('Authenticated non-admin is blocked');
  r=await fetch(origin+'/admin',{headers:{Cookie:'dutyperks-admin=allowed-admin-token'}});html=await r.text();assert.match(html,/Private candidate fixture/);assert.doesNotMatch(html,/fixture-server-key/);console.log('Verified configured admin can read the private queue');
  for(const headers of [{},{authorization:'Bearer wrong'}]){r=await fetch(origin+'/api/cron/discover',{headers});assert.equal(r.status,401);}console.log('Missing and wrong cron credentials rejected');
@@ -55,4 +59,7 @@ try{
  r=await fetch(origin+'/api/admin/review',{method:'POST',headers:{origin,Cookie:'dutyperks-admin=allowed-admin-token'},body,redirect:'manual'});assert.equal(r.status,303);assert.match(r.headers.get('location'),/notice=saved/);assert.equal(lastReview.p_actor,adminId);assert.equal(lastReview.p_offer.militaryPrice,'0');console.log('Approved review uses server-verified actor and validated payload');
  body.delete('confirm');lastReview=null;
  r=await fetch(origin+'/api/admin/review',{method:'POST',headers:{origin,Cookie:'dutyperks-admin=allowed-admin-token'},body,redirect:'manual'});assert.match(r.headers.get('location'),/notice=review/);assert.equal(lastReview,null);console.log('Missing explicit source confirmation cannot publish');
+ robotsBlocked=false;pdfSource=true;lastSnapshot=null;
+ r=await fetch(origin+'/api/cron/discover',{headers:{authorization:'Bearer '+secret}});assert.equal(r.status,200);assert.match(lastSnapshot.p_title,/MWR ticket price list/);assert.match(lastSnapshot.p_excerpt,/does not extract PDF prices/);assert.equal(lastSnapshot.p_hash.length,64);console.log('MWR PDF changes enter the private queue without fabricated prices');
+ r=await fetch(origin+'/admin',{headers:{Cookie:'dutyperks-admin=allowed-admin-token'}});html=await r.text();assert.match(html,/MWR reference page or ticket catalog/);assert.doesNotMatch(html,/Save verified offer/);console.log('MWR catalog review cannot be published as an attraction through the UI');
 }finally{app.kill();await new Promise(r=>mock.close(r));}

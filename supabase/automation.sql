@@ -121,6 +121,9 @@ begin
  if p_actor is null then raise exception 'Reviewer required'; end if;
  select * into strict c from public.discovery_candidates where id=p_candidate for update;
  select * into strict s from public.discovery_sources where id=c.source_id for update;
+ if p_action='approve' and s.url ~ '^https://(whidbey[.]navylifepnw[.]com|sandiego[.]navylifesw[.]com)/' then
+   raise exception 'MWR reference catalogs require destination-specific offer setup; cannot publish the catalog as an attraction';
+ end if;
  if c.state<>'pending' then raise exception 'Review is closed'; end if;
  if p_action in ('dismiss','done') then
    update public.discovery_candidates set state=case when p_action='dismiss' then 'dismissed' else 'reviewed' end,

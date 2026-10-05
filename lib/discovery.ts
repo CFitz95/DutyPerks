@@ -1,6 +1,6 @@
 import "server-only";
 import { privateSupabase } from "./private-supabase";
-import { extractEvidence, robotsAllows, safeSourceUrl } from "./discovery-core.mjs";
+import { extractEvidence, isMwrSource, pdfEvidence, robotsAllows, safeSourceUrl } from "./discovery-core.mjs";
 
 async function fetchPage(value: string, maxBytes = 500000, allowed?: (url: string) => boolean) {
   let url = safeSourceUrl(value);
@@ -16,14 +16,16 @@ async function fetchPage(value: string, maxBytes = 500000, allowed?: (url: strin
     }
     if (!response.ok) { await response.body?.cancel(); throw new Error(`HTTP ${response.status}`); }
     const type = response.headers.get("content-type") ?? "";
-    if (!/text\/|application\/xhtml/i.test(type)) { await response.body?.cancel(); throw new Error("Unsupported content type"); }
+    const pdf = type.toLowerCase().includes('application/pdf') && isMwrSource(url) && maxBytes > 100000;
+    if (!pdf && !/text\/|application\/xhtml/i.test(type)) { await response.body?.cancel(); throw new Error("Unsupported content type"); }
     const reader = response.body?.getReader();
     if (!reader) throw new Error("Empty response");
     const chunks: Uint8Array[] = []; let size = 0;
     try {
-      while (true) { const { value, done } = await reader.read(); if (done) break; size += value.byteLength; if (size > maxBytes) throw new Error("Page exceeds size limit"); chunks.push(value); }
+      while (true) { const { value, done } = await reader.read(); if (done) break; size += value.byteLength; if (size > (pdf ? 3000000 : maxBytes)) throw new Error("Page exceeds size limit"); chunks.push(value); }
     } finally { await reader.cancel(); }
-    return { text: Buffer.concat(chunks).toString("utf8"), url };
+    const bytes = Buffer.concat(chunks);
+    return { text: pdf ? '' : bytes.toString("utf8"), url, pdf: pdf ? bytes : null };
   }
   throw new Error("Too many redirects");
 }
@@ -53,7 +55,7 @@ export async function runDiscovery() {
           return robotsAllows(robots.get(url.origin)!, destination.pathname + destination.search);
         });
         if (!robotsAllows(robots.get(url.origin)!, new URL(page.url).pathname + new URL(page.url).search)) throw new Error("Redirect destination disallowed by robots.txt");
-        const evidence = extractEvidence(page.text, page.url);
+        const evidence = page.pdf ? pdfEvidence(page.pdf, page.url) : extractEvidence(page.text, page.url);
         const { data: added, error: snapshotError } = await db.rpc("record_discovery_snapshot", {
           p_run: runId, p_source: source.id, p_hash: evidence.fingerprint,
           p_title: evidence.title, p_excerpt: evidence.excerpt, p_found: evidence.found

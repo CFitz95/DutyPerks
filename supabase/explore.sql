@@ -41,7 +41,9 @@ as $$
     and (coalesce(btrim(p_location), '') = ''
       or lower(l.city) = lower(btrim(p_location))
       or lower(l.city || ', ' || l.state) = lower(btrim(p_location))
-      or l.postal_code = btrim(p_location))
+      or l.postal_code = btrim(p_location)
+      or (lower(btrim(p_location)) in ('whidbey island','whidbey island, wa','whidbey island wa')
+        and l.state = 'WA' and lower(l.city) in ('oak harbor','langley','coupeville','freeland','clinton','greenbank')))
     and (coalesce(p_status, '') = '' or exists (
       select 1 from public.benefit_eligibility e
       where e.benefit_id = b.id and e.status::text = p_status))

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { getAdmin } from "../../lib/admin-auth";
 import { privateSupabase } from "../../lib/private-supabase";
-import { safeSourceUrl } from "../../lib/discovery-core.mjs";
+import { isMwrSource, safeSourceUrl } from "../../lib/discovery-core.mjs";
 import ReviewForm from "./ReviewForm";
 export const dynamic = "force-dynamic";
 const notices: Record<string,string> = {
@@ -50,7 +50,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
     return <main>
       <Link href="/">← DutyPerks home</Link><h1>Offer review queue</h1>
       <p>Weekly checks run Mondays at 13:00 UTC (9 AM Eastern during daylight saving time, 8 AM in winter). New finds stay private until you verify and save them.</p>
-      <p>This checks selected official San Diego websites and their military-offer links. It does not search the entire web or read private ID.me offers.</p>
+      <p>This checks selected official San Diego and Whidbey Island websites, including public MWR ticket pages and PDFs. New businesses found through research must be added as approved sources.</p>
       {notice && <p role="status">{notice}</p>}
       <div style={{display:"flex",gap:20}}>
         <form action="/api/admin/run" method="post"><button>Check sources now</button></form>
@@ -65,6 +65,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
         try { url = safeSourceUrl(source.url); } catch { return <p key={candidate.id}>Unsupported source URL. Disable it in discovery_sources before running checks.</p>; }
         const name = businesses.find(b => b.id === source.business_id)?.name ?? "Business";
         const stale = candidate.fingerprint !== source.last_hash;
+        const mwrReference = isMwrSource(url);
         const choices = offers.filter(o => o.business_id === source.business_id && o.location_id === source.location_id).map(o => ({
           id:o.id,title:o.title,description:o.description,requirements:o.requirements,category:o.category,
           starts_at:o.starts_at,expires_at:o.expires_at,normal_price:o.normal_price,military_price:o.military_price,
@@ -74,9 +75,10 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
           <h3>{name}: {candidate.title}</h3><p>Review reason: {candidate.kind} · Found {candidate.discovered_at.slice(0,10)}</p>
           <a href={url} target="_blank" rel="noopener noreferrer">Open official source</a>
           <p>Extracted text is evidence to check, not verified terms. Navigation, unrelated prices, or conflicting wording may be included.</p>
+          {mwrReference && <p>This is an MWR reference page or ticket catalog. Open it to check current prices and eligibility. Individual attraction offers need their own destination and terms before they can be added; finishing this review does not publish tickets.</p>}
           <details><summary>Source excerpt</summary><pre style={{whiteSpace:"pre-wrap",overflowWrap:"anywhere"}}>{candidate.excerpt || "Previously detected military wording is no longer present."}</pre></details>
           {stale ? <p>This page has newer evidence. Use its newest pending review.</p> :
-            candidate.kind !== "removed" && <ReviewForm candidate={candidate.id} offers={choices} />}
+            candidate.kind !== "removed" && !mwrReference && <ReviewForm candidate={candidate.id} offers={choices} />}
           {<div style={{display:"flex",gap:12,marginTop:16}}>
             {!stale && <form action="/api/admin/review" method="post"><input type="hidden" name="candidate" value={candidate.id}/><button name="action" value="done">Finish reviewing this page</button></form>}
             <form action="/api/admin/review" method="post"><input type="hidden" name="candidate" value={candidate.id}/><button name="action" value="dismiss">Dismiss this find</button></form>

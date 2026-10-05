@@ -1,7 +1,7 @@
-// Refresh Explore deployment
 import Link from "next/link";
 import { z } from "zod";
 import { supabaseServer } from "../../lib/supabase";
+import { matchingMwrResources } from "../../lib/mwr-resources";
 
 export const dynamic = "force-dynamic";
 
@@ -67,11 +67,11 @@ export default async function Explore({ searchParams }: { searchParams: Promise<
     <main>
       <Link href="/">← DutyPerks home</Link>
       <h1>Explore verified benefits</h1>
-      <p>Search by city or ZIP and military status. Only currently valid, verified offers appear.</p>
-      <p>City and ZIP searches are exact matches. Distance and nearby-radius search are coming later.</p>
+      <p>Search by city, Whidbey Island, or ZIP and military status. Only currently valid, verified offers appear in the benefit results.</p>
+      <p>City and ZIP searches are exact matches. Whidbey Island includes its listed communities. Distance search is coming later.</p>
       <form action="/explore" method="get" style={{ display: "grid", gap: 12, maxWidth: 520 }}>
-        <label>City or ZIP<br />
-          <input name="location" defaultValue={location.slice(0, 120)} maxLength={120} placeholder="San Diego, CA or 92101" />
+        <label>City, area or ZIP<br />
+          <input name="location" defaultValue={location.slice(0, 120)} maxLength={120} placeholder="San Diego, Whidbey Island or ZIP" />
         </label>
         <label>Military status<br />
           <select name="status" defaultValue={statuses.some(([key]) => key === status) ? status : ""}>
@@ -107,6 +107,14 @@ export default async function Explore({ searchParams }: { searchParams: Promise<
             ))}
           </>}
       </section>
+      {!invalid && matchingMwrResources(location).length > 0 && <section aria-label="Official MWR resources" style={{marginTop:32}}>
+        <h2>MWR tickets and travel resources</h2>
+        <p>These official resources are separate from the verified benefit results. Eligibility varies by ticket and program; a selected military status does not guarantee access. The purchase office may be in a different city from the attraction.</p>
+        {matchingMwrResources(location).map(resource => <article key={resource.area} style={{border:"1px solid #ddd",padding:16,marginBottom:16,borderRadius:8}}>
+          <h3>{resource.title}</h3><p>Purchase offices: {resource.location}</p>
+          <p>{resource.detail}</p><a href={resource.url} target="_blank" rel="noopener noreferrer">View official MWR listings and prices</a>
+        </article>)}
+      </section>}
     </main>
   );
 }

@@ -1,13 +1,13 @@
 # DutyPerks
 
-DutyPerks shows manually verified military offers in San Diego. Explore filters
-by city/ZIP, status and category. Plan is still a request-validation prototype;
+DutyPerks shows manually verified military offers in San Diego and Whidbey Island. Explore filters
+by city/ZIP or Whidbey Island, status and category. Plan is still a request-validation prototype;
 it does not generate or save itineraries.
 
 ## Weekly offer discovery
 Vercel calls /api/cron/discover Mondays at 13:00 UTC (9 AM Eastern in summer,
-8 AM in winter). It checks selected official sources for the five starter
-businesses and follows up to two public military-offer links on the same site.
+8 AM in winter). It checks selected official business and MWR sources
+and follows up to two public military-offer links on the same site.
 Checks process at most 12 sources per run, oldest checked first. Added links
 are checked on a later run. This is official-site monitoring, not a web-wide
 search engine. New businesses require adding a trusted hostname in
@@ -16,6 +16,13 @@ lib/discovery-core.mjs and a discovery_sources row with business/location IDs.
 Discovery stores military-related source excerpts, not AI-generated offer terms.
 Page text can contain unrelated prices or conflicts. Humans open the original
 source and confirm eligibility, dates and exclusions before publication.
+Approved Whidbey and San Diego MWR sites also follow same-site ticket-price-list links.
+MWR PDFs are limited to 3 MB, checked for a PDF signature and hashed for changes.
+The job does not parse PDF text or prices. Catalog changes enter a reference-only
+review queue; the UI and database block publishing a catalog as an attraction.
+Individual MWR tickets need destination-specific setup and verified purchase terms.
+Explore shows official MWR resource links separately from verified benefit results;
+these links do not promise eligibility, prices or ticket availability.
 Authenticated ID.me offers, emails, and JavaScript-only pages are not fetched.
 robots.txt restrictions, rate limits, blocks, timeouts, oversized pages and
 unsupported content are respected/reported; no bypass is attempted.
@@ -63,8 +70,11 @@ are enforced at public query time even if a scheduled run fails.
 
 The browser never receives the server key. Admin cookies are HttpOnly,
 SameSite=Strict and Secure on HTTPS. Every protected request checks the user
-against Supabase Auth and ADMIN_EMAIL. No public signup or email sending is
-added. Sessions expire in at most one hour; sign in again instead of refreshing
+against Supabase Auth and ADMIN_EMAIL (the variable name is case sensitive).
+There is no public signup. The administrator can request a Supabase password-reset
+email from /admin. Allow /admin/reset-password in Supabase Redirect URLs and
+configure email delivery. Recovery credentials stay in memory and are removed
+from the address bar. Sessions expire in at most one hour; sign in again instead of refreshing
 tokens in the browser. Cross-origin writes are rejected. Supabase Auth handles
 password-login rate limits. Disable the admin user to revoke access.
 Discovery tables/functions are unavailable to anon/authenticated roles.
@@ -87,6 +97,18 @@ A broader business-discovery provider, geographic radius search, notification
 delivery, authenticated customer trips, and real itineraries remain future
 work. The current job reports to the private queue without sending messages.
 Review dates are not silently extended merely because a crawler found a page.
+
+## Whidbey Island and MWR expansion
+Run supabase/whidbey-mwr.sql once after the existing automation setup, then
+deploy this update and run Check sources now. The repeatable setup adds one
+pending kayaking offer and five approved sources. It does not publish offers
+or overwrite reviewed benefit terms. Select the existing kayaking draft in
+the admin review dropdown, check the current FAQ, and save only confirmed terms.
+The published FAQ names active-duty members and veterans, a 10% discount and
+code ARMEDFORCES10. No other eligibility or ID requirement is assumed.
+Whidbey Island searches match listed WA communities; the kayaking headquarters
+is Langley, while activity departure points depend on the booking.
+Do not rerun the original schema.sql or obsolete setup copies on a live database.
 
 ## Secrets and deployment
 .gitignore excludes environment files except placeholder .env.example, generated
