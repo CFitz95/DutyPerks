@@ -1,111 +1,102 @@
-import Link from "next/link";
-import { z } from "zod";
-import { supabaseServer } from "../../lib/supabase";
+# DutyPerks
 
-export const dynamic = "force-dynamic";
+DutyPerks shows manually verified military offers in San Diego. Explore filters
+by city/ZIP, status and category. Plan is still a request-validation prototype;
+it does not generate or save itineraries.
 
-const statuses = [
-  ["active_duty", "Active Duty"], ["reserve_guard", "Reserve / Guard"],
-  ["veteran", "Veteran"], ["retired", "Retired"], ["family", "Military Family"]
-] as const;
-const categories = [
-  ["food", "Food"], ["hotel", "Hotels"], ["attraction", "Attractions"],
-  ["tour", "Tours"], ["entertainment", "Entertainment"], ["shopping", "Shopping"],
-  ["automotive", "Automotive"], ["fitness", "Fitness"], ["education", "Education"],
-  ["financial", "Financial"]
-] as const;
-const SourceUrl = z.string().url().refine(url => new URL(url).protocol === "https:");
-const Benefits = z.array(z.object({
-  id: z.string().uuid(), title: z.string(), description: z.string(),
-  category: z.string(), requirements: z.string().nullable(),
-  business_name: z.string(), city: z.string(), state: z.string(),
-  postal_code: z.string().nullable(), eligibility: z.array(z.string()),
-  source_url: SourceUrl, source_name: z.string().nullable(),
-  verified_at: z.string().datetime({ offset: true }),
-  expires_at: z.string().date().nullable()
-})).max(100);
-type Params = Record<string, string | string[] | undefined>;
-const single = (value: Params[string]) => typeof value === "string" ? value : "";
-const dateLabel = (value: string) => value.slice(0, 10);
-const eligibilityLabel = (value: string) => statuses.find(([key]) => key === value)?.[1] ?? value;
+## Weekly offer discovery
+Vercel calls /api/cron/discover Mondays at 13:00 UTC (9 AM Eastern in summer,
+8 AM in winter). It checks selected official sources for the five starter
+businesses and follows up to two public military-offer links on the same site.
+Checks process at most 12 sources per run, oldest checked first. Added links
+are checked on a later run. This is official-site monitoring, not a web-wide
+search engine. New businesses require adding a trusted hostname in
+lib/discovery-core.mjs and a discovery_sources row with business/location IDs.
 
-export default async function Explore({ searchParams }: { searchParams: Promise<Params> }) {
-  const params = await searchParams;
-  const location = single(params.location).trim();
-  const status = single(params.status);
-  const category = single(params.category);
-  const invalid = location.length > 120 ||
-    (status !== "" && !statuses.some(([key]) => key === status)) ||
-    (category !== "" && !categories.some(([key]) => key === category)) ||
-    ["location", "status", "category"].some(key => Array.isArray(params[key]));
-  let benefits: z.infer<typeof Benefits> = [];
-  let error: string | null = invalid ? "Please use a city or ZIP and select one of the listed filters." : null;
-  if (!invalid) {
-    let stage = "configuration";
-    try {
-      const client = supabaseServer();
-      stage = "connection";
-      const { data, error: queryError, status: responseStatus } = await client.rpc("search_verified_benefits", {
-        p_location: location, p_status: status, p_category: category
-      });
-      if (queryError) {
-        console.error("DutyPerks Explore query failed", {
-          status: responseStatus,
-          code: /^[A-Z0-9]{1,24}$/.test(queryError.code ?? "") ? queryError.code : "unavailable"
-        });
-        throw new Error("Benefits query failed");
-      }
-      stage = "response validation";
-      benefits = Benefits.parse(data);
-    } catch {
-      console.error("DutyPerks Explore failure", { stage });
-      error = "We couldn’t load benefits right now. Please try again shortly.";
-    }
-  }
-  return (
-    <main>
-      <Link href="/">← DutyPerks home</Link>
-      <h1>Explore verified benefits</h1>
-      <p>Search by city or ZIP and military status. Only currently valid, verified offers appear.</p>
-      <p>City and ZIP searches are exact matches. Distance and nearby-radius search are coming later.</p>
-      <form action="/explore" method="get" style={{ display: "grid", gap: 12, maxWidth: 520 }}>
-        <label>City or ZIP<br />
-          <input name="location" defaultValue={location.slice(0, 120)} maxLength={120} placeholder="San Diego, CA or 92101" />
-        </label>
-        <label>Military status<br />
-          <select name="status" defaultValue={statuses.some(([key]) => key === status) ? status : ""}>
-            <option value="">All statuses</option>
-            {statuses.map(([key, label]) => <option key={key} value={key}>{label}</option>)}
-          </select>
-        </label>
-        <label>Category<br />
-          <select name="category" defaultValue={categories.some(([key]) => key === category) ? category : ""}>
-            <option value="">All categories</option>
-            {categories.map(([key, label]) => <option key={key} value={key}>{label}</option>)}
-          </select>
-        </label>
-        <button type="submit">Find benefits</button>
-        <Link href="/explore">Clear filters</Link>
-      </form>
-      <section aria-label="Search results" style={{ marginTop: 24 }}>
-        {error ? <p role="alert">{error} <Link href="/explore">Try again</Link></p> :
-          benefits.length === 0 ? <p role="status">No verified benefits match your search yet. Try another city or clear the filters. Unverified offers are kept hidden.</p> :
-          <>
-            <p>{benefits.length === 100 ? "Showing the first 100 matches. Use filters to narrow your search." : `${benefits.length} verified ${benefits.length === 1 ? "benefit" : "benefits"} found.`}</p>
-            {benefits.map(benefit => (
-              <article key={benefit.id} style={{ border: "1px solid #ddd", padding: 16, marginBottom: 16, borderRadius: 8 }}>
-                <p><strong>{benefit.business_name}</strong> · {benefit.city}, {benefit.state}</p>
-                <h2>{benefit.title}</h2>
-                <p>{benefit.description}</p>
-                <p><strong>Eligibility:</strong> {benefit.eligibility.length ? benefit.eligibility.map(eligibilityLabel).join(", ") : "Check the source for eligibility."}</p>
-                {benefit.requirements && <p><strong>Requirements:</strong> {benefit.requirements}</p>}
-                <p>Verified {dateLabel(benefit.verified_at)}{benefit.expires_at ? ` · Offer ends ${benefit.expires_at}` : ""}</p>
-                <a href={benefit.source_url} target="_blank" rel="noopener noreferrer">View verification source{benefit.source_name ? `: ${benefit.source_name}` : ""}</a>
-                <p>Confirm terms with the provider before booking.</p>
-              </article>
-            ))}
-          </>}
-      </section>
-    </main>
-  );
-}
+Discovery stores military-related source excerpts, not AI-generated offer terms.
+Page text can contain unrelated prices or conflicts. Humans open the original
+source and confirm eligibility, dates and exclusions before publication.
+Authenticated ID.me offers, emails, and JavaScript-only pages are not fetched.
+robots.txt restrictions, rate limits, blocks, timeouts, oversized pages and
+unsupported content are respected/reported; no bypass is attempted.
+
+Source fingerprints prevent identical evidence from becoming duplicate queue
+entries. Existing offers can be updated rather than copied. Repeated approval
+submissions with the same payload return the prior offer. A shared database
+lease prevents overlapping scheduled and manual runs.
+
+A changed source makes its previous verifications overdue immediately, hiding
+affected offers until reviewed. Unchanged offers are queued again as their
+30-day review deadline approaches. Reviewed pages may contain multiple offers;
+save each separately and click Finish reviewing this page when done. Dismissal
+does not publish anything or revive hidden offers. Expiration/review deadlines
+are enforced at public query time even if a scheduled run fails.
+
+## Setup for an already-deployed DutyPerks project
+1. Run supabase/automation.sql in Supabase SQL Editor after the existing schema
+   and explore.sql. It creates private discovery tables/functions and seeds
+   official sources; it does not overwrite your current benefits.
+2. In Supabase Authentication > Users, choose Add user > Create new user.
+   Create your admin email/password and mark the email confirmed. Store the
+   password in your password manager. Do not put it in source code or chat.
+3. In Vercel project duty-perks-angs > Settings > Environment Variables, add
+   these to Production:
+   - SUPABASE_SECRET_KEY: the Supabase server secret key (sb_secret_...) or
+     legacy service_role key. Never use a NEXT_PUBLIC_ prefix for this value.
+   - ADMIN_EMAIL: the email created in step 2.
+   - CRON_SECRET: a random secret of at least 32 characters, stored as Secret.
+     Generate it with your password manager; do not put it in a GitHub file.
+   Keep NEXT_PUBLIC_SUPABASE_URL set to the project base URL, with no /rest/v1.
+   Keep NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY as already configured.
+4. Upload the app update to GitHub including vercel.json at the repository root.
+   This triggers Vercel to deploy. Wait for Ready. Production cron jobs are
+   installed from vercel.json; check Settings > Cron Jobs for the weekly job.
+5. Open /admin on your production site and sign in with the new Supabase user.
+   Click Check sources now. It may take several minutes. Inspect Recent runs
+   and Monitored sources; partial results are expected if a site blocks robots.
+6. Open each source yourself, choose an existing offer for rechecks or explicitly
+   confirm a distinct new offer, fill all terms and eligibility, then save.
+   Do not guess conflicting terms. For multiple offers, save each separately
+   before finishing the page. Use Dismiss for irrelevant finds.
+7. Verify the published offer in Explore. Run the optional rollback-only
+   supabase/test_automation.sql checks after setup if desired.
+
+The browser never receives the server key. Admin cookies are HttpOnly,
+SameSite=Strict and Secure on HTTPS. Every protected request checks the user
+against Supabase Auth and ADMIN_EMAIL. No public signup or email sending is
+added. Sessions expire in at most one hour; sign in again instead of refreshing
+tokens in the browser. Cross-origin writes are rejected. Supabase Auth handles
+password-login rate limits. Disable the admin user to revoke access.
+Discovery tables/functions are unavailable to anon/authenticated roles.
+
+## Local validation
+Node 22 LTS, pnpm 11.25.0. Run pnpm install --frozen-lockfile, pnpm lint,
+pnpm test, pnpm build, pnpm typecheck. The app builds without credentials.
+Local secrets belong in ignored .env.local. No extra paid API is required.
+A live database and real Vercel credentials are needed to validate activation.
+
+## Existing database
+On a NEW project run schema.sql, explore.sql, then automation.sql. On an existing
+project do not rerun table creation; use security.sql if original safeguards
+were never applied, then explore.sql and automation.sql. Candidate seed scripts
+insert pending offers only. They never prove an offer is real. Existing reviewed
+benefits are stored in Supabase and are preserved by the automation setup.
+
+## What remains
+A broader business-discovery provider, geographic radius search, notification
+delivery, authenticated customer trips, and real itineraries remain future
+work. The current job reports to the private queue without sending messages.
+Review dates are not silently extended merely because a crawler found a page.
+
+## Secrets and deployment
+.gitignore excludes environment files except placeholder .env.example, generated
+files, credentials and ZIPs. Manual GitHub uploads still need checking. Rotate
+any leaked credential; deletion alone does not erase Git history.
+Vercel root: repository root. Install: pnpm install --frozen-lockfile.
+Build: pnpm build. Node: 22.x. Output directory: Next.js default.
+Server secrets must never be placed in vercel.json or public framework variables.
+
+References:
+- https://vercel.com/docs/cron-jobs/manage-cron-jobs
+- https://supabase.com/docs/reference/javascript/auth-getuser
+- https://supabase.com/docs/guides/getting-started/api-keys
