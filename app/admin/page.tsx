@@ -53,6 +53,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
       <p>This checks selected official San Diego and Whidbey Island websites, including public MWR ticket pages and PDFs. New businesses found through research must be added as approved sources.</p>
       {notice && <p role="status">{notice}</p>}
       <div style={{display:"flex",gap:20}}>
+        <Link href="/admin/feedback">Read tester feedback</Link>
         <form action="/api/admin/run" method="post"><button>Check sources now</button></form>
         <form action="/api/admin/logout" method="post"><button>Sign out</button></form>
       </div>

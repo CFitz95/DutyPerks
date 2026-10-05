@@ -118,6 +118,34 @@ Vercel root: repository root. Install: pnpm install --frozen-lockfile.
 Build: pnpm build. Node: 22.x. Output directory: Next.js default.
 Server secrets must never be placed in vercel.json or public framework variables.
 
+## Phone installation and tester feedback
+Run supabase/feedback.sql in the existing project's SQL Editor, then deploy
+the phone/feedback update. Do not rerun schema.sql. This repeatable migration
+adds private feedback tables and a server-only submission function.
+The existing SUPABASE_SECRET_KEY and CRON_SECRET (at least 32 characters)
+are required; no new environment variable or paid API is needed.
+
+Visit /install for iPhone Safari and Android Chrome home-screen instructions.
+This is an installable web app; it is not an App Store or Google Play release.
+The service worker caches only a reconnect page. Offers and admin pages are
+never stored offline. The installation prompt depends on browser support.
+
+Anyone can submit feedback at /feedback without an account. Email and rating
+are optional. Only the configured administrator can read it at /admin/feedback
+or mark it reviewed. Feedback is retained until the administrator deletes it
+through the database. No email or notification is automatically sent.
+Submissions use a honeypot, bounded request size, same-origin checks and atomic
+limits of 20 submissions per address hash per 15 minutes and 200 per day globally.
+The server uses CRON_SECRET to hash the Vercel-provided client address; raw
+addresses are not stored. Old rate counters are cleaned up during submissions.
+
+After deployment, send a test message and confirm it appears in the private
+admin inbox, then install on a real phone. Local builds and mocked integration
+checks do not prove the live database migration or device installation works.
+Optional supabase/test_feedback.sql checks run inside a rollback-only transaction.
+Additional local checks: node tests/feedback.integration.mjs,
+node tests/automation.integration.mjs, node tests/password-reset.integration.mjs.
+
 References:
 - https://vercel.com/docs/cron-jobs/manage-cron-jobs
 - https://supabase.com/docs/reference/javascript/auth-getuser
