@@ -5,6 +5,8 @@ import { safeSourceUrl } from "../../lib/discovery-core.mjs";
 import ReviewForm from "./ReviewForm";
 export const dynamic = "force-dynamic";
 const notices: Record<string,string> = {
+  "reset-sent": "If this email matches the administrator account, a password-reset email has been requested. Open its link to choose a new password.",
+  "reset-unavailable": "The reset email could not be sent. Check Supabase email delivery settings and try again shortly.",
   login: "Sign-in failed. Check your admin email and password.",
   setup: "Automation setup is incomplete or unavailable. Check the database migration and server environment settings.",
   review: "Offer not saved. Check required fields, expiration choice, and eligibility. The source may have changed or this review may already be closed.",
@@ -25,6 +27,12 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
       <label>Password <input name="password" type="password" autoComplete="current-password" required /></label>
       <button>Sign in</button>
     </form>
+    <details style={{marginTop:24}}><summary>Forgot your password?</summary>
+      <form action="/api/admin/password-reset" method="post" style={{display:"grid",gap:12,maxWidth:400}}>
+        <label>Admin email <input name="email" type="email" autoComplete="username" required /></label>
+        <button>Send password-reset email</button>
+      </form>
+    </details>
   </main>;
   try {
     const db = privateSupabase();
