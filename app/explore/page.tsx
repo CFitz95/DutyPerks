@@ -64,9 +64,16 @@ export default async function Explore({ searchParams }: { searchParams: Promise<
     }
   }
   return (
-    <main>
+    <main className="dp-explore">
       <Link href="/">← DutyPerks home</Link>
-      <h1>Explore verified benefits</h1>
+      <div className="dp-explore-heading">
+  <span className="dp-kicker">DISCOVER YOUR NEXT PERK</span>
+  <h1>Military savings, wherever you go.</h1>
+  <p>
+    Explore verified military discounts, filter by eligibility,
+    and find official resources for your next adventure.
+  </p>
+</div>
       <p>Search by city, Whidbey Island, or ZIP and military status. Only currently valid, verified offers appear in the benefit results.</p>
       <p>City and ZIP searches are exact matches. Whidbey Island includes its listed communities. Distance search is coming later.</p>
       <form action="/explore" method="get" style={{ display: "grid", gap: 12, maxWidth: 520 }}>
