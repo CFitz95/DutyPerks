@@ -313,3 +313,113 @@
     transition: none;
   }
 }
+
+/* Explore results redesign */
+
+.dp-explore {
+  --dp-navy: #10253b;
+  --dp-teal: #12b7a6;
+  --dp-gold: #f5b84c;
+  --dp-cloud: #f4f7fa;
+}
+
+.dp-explore-heading {
+  background:
+    radial-gradient(circle at 90% 20%, #12b7a655, transparent 40%),
+    linear-gradient(135deg, #10253b, #183e57);
+  border-radius: 22px;
+  color: white;
+  padding: clamp(28px, 6vw, 60px);
+  margin: 24px 0;
+}
+
+.dp-explore-heading .dp-kicker {
+  color: var(--dp-gold);
+}
+
+.dp-explore-heading h1 {
+  color: white;
+  font-size: clamp(2.2rem, 5vw, 3.7rem);
+  line-height: 1.1;
+  margin: 16px 0;
+}
+
+.dp-explore-heading p {
+  color: #e0edf2;
+  font-size: 1.05rem;
+  max-width: 570px;
+}
+
+.dp-explore form {
+  background: var(--dp-cloud);
+  border: 1px solid #dce7eb;
+  border-radius: 18px;
+  padding: 24px;
+  margin: 28px 0;
+}
+
+.dp-explore form label {
+  font-weight: 700;
+  color: var(--dp-navy);
+}
+
+.dp-explore form button {
+  background: var(--dp-teal);
+  color: var(--dp-navy);
+  font-weight: 800;
+}
+
+.dp-explore section[aria-label="Search results"] article,
+.dp-explore section[aria-label="Official MWR resources"] article {
+  background: white;
+  border: 1px solid #dce7eb !important;
+  border-radius: 18px !important;
+  padding: 26px !important;
+  box-shadow: 0 5px 20px #10253b0b;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.dp-explore section article:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 30px #10253b16;
+}
+
+.dp-explore section article h2,
+.dp-explore section article h3 {
+  color: var(--dp-navy);
+}
+
+.dp-explore section article a {
+  display: inline-flex;
+  padding: 11px 17px;
+  background: var(--dp-navy);
+  color: white;
+  border-radius: 10px;
+  text-decoration: none;
+  font-weight: 700;
+  margin-top: 8px;
+}
+
+.dp-explore section article a:hover {
+  background: #1b4563;
+}
+
+@media (max-width: 520px) {
+  .dp-explore-heading {
+    padding: 28px 20px;
+  }
+
+  .dp-explore form {
+    padding: 18px;
+  }
+
+  .dp-explore section article {
+    padding: 18px !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dp-explore section article {
+    transition: none;
+  }
+}
