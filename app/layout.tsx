@@ -3,6 +3,7 @@ import Link from "next/link";
 import type { Metadata, Viewport } from "next";
 import AppSetup from "./components/AppSetup";
 import MainNav from "./components/MainNav";
+import PublicAnalytics from "./components/PublicAnalytics";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -28,6 +29,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <footer className="site-footer"><p>DutyPerks beta · Confirm eligibility and terms with the provider before booking.</p><Link href="/feedback">Feedback and privacy</Link></footer>
         </div>
         </AppSetup>
+        {process.env.VERCEL_ENV === "production" && process.env.DUTYPERKS_ANALYTICS_ENABLED === "true" && <PublicAnalytics />}
       </body>
     </html>
   );
