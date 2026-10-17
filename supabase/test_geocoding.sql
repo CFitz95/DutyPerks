@@ -9,6 +9,12 @@ begin
   end if;
   insert into public.locations(id,name,address,city,state,postal_code,country)
     values(lid,'TEST ONLY','353 Fifth Ave','San Diego','CA','92101','US');
+  if exists(select 1 from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+    where n.nspname='public' and p.proname in ('store_geocode_proposal','review_geocode_proposal') and p.prosecdef) then
+    raise exception 'Geocoding functions must not elevate caller privileges';
+  end if;
+  -- Exercise the real server role rather than relying on postgres superuser access.
+  execute 'set local role service_role';
   select public.geocode_snapshot(l) into snap from public.locations l where id=lid;
   ok:=public.store_geocode_proposal(lid,snap,'{"status":"review","latitude":32.708877,"longitude":-117.16,"matched_address":"TEST ONLY"}');
   if not ok then raise exception 'Proposal not stored'; end if;
@@ -31,4 +37,5 @@ begin
   if public.review_geocode_proposal(lid,rev,'approve') then raise exception 'Existing point overwritten'; end if;
   if public.store_geocode_proposal(lid,snap,'{"status":"no_match"}') then raise exception 'Existing coordinates requeued'; end if;
 end $$;
+reset role;
 rollback;

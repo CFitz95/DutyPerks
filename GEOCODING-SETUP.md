@@ -27,7 +27,7 @@ This addition uses the existing DutyPerks administrator login and private Supaba
 
 ## Validation status
 
-All 24 local unit tests pass (14 new geocoding tests and 10 existing tests). New tests cover candidate eligibility, no/multiple matches, invalid coordinates, address mismatches, oversized responses, and provider failures. Database rollback checks are provided but were not executed because no test Supabase database is connected. Full app installation/build was blocked by unavailable offline dependencies, so this is a prepared patch, not a production-validated deployment. No live provider call was made from this prepared web implementation. The earlier user-run Census preview demonstrated three address matches, but does not validate this app deployment.
+All 24 local unit tests pass (14 new geocoding tests and 10 existing tests). New tests cover candidate eligibility, no/multiple matches, invalid coordinates, address mismatches, oversized responses, and provider failures. Database rollback checks run in a disposable PostgreSQL 17/PostGIS GitHub Actions service, including the server role, stale approvals and MWR-role guards. Supabase branching requires Pro on this account; no paid branch was created. This does not replace end-to-end validation of Supabase Auth, REST and production settings. Local installation was blocked by unavailable offline dependencies. All three Vercel preview deployments of the initial PR passed; the latest revision must pass its checks before merging. Nothing has been deployed to production. No live provider call was made from this prepared web implementation. The earlier user-run Census preview demonstrated three address matches, but does not validate this app deployment.
 
 ## Pause / rollback
 

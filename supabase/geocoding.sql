@@ -20,7 +20,8 @@ create table if not exists public.location_geocode_reviews (
 );
 alter table public.location_geocode_reviews enable row level security;
 revoke all on public.location_geocode_reviews from public, anon, authenticated;
-grant select on public.location_geocode_reviews to service_role;
+grant select, insert, update on public.location_geocode_reviews to service_role;
+grant select, update on public.locations to service_role;
 
 create or replace function public.geocode_snapshot(l public.locations)
 returns jsonb language sql immutable set search_path=public,pg_temp as $$
@@ -29,7 +30,7 @@ returns jsonb language sql immutable set search_path=public,pg_temp as $$
 $$;
 
 create or replace function public.store_geocode_proposal(p_location uuid,p_snapshot jsonb,p_proposal jsonb)
-returns boolean language plpgsql security definer set search_path=public,extensions,pg_temp as $$
+returns boolean language plpgsql security invoker set search_path=public,extensions,pg_temp as $$
 declare l public.locations; r public.location_geocode_reviews; lat double precision; lon double precision;
 begin
   if p_snapshot is null or p_proposal is null or p_proposal->>'status' is null then return false; end if;
@@ -52,7 +53,7 @@ begin
 end $$;
 
 create or replace function public.review_geocode_proposal(p_location uuid,p_revision uuid,p_action text)
-returns boolean language plpgsql security definer set search_path=public,extensions,pg_temp as $$
+returns boolean language plpgsql security invoker set search_path=public,extensions,pg_temp as $$
 declare l public.locations; r public.location_geocode_reviews; lat double precision; lon double precision;
 begin
   if p_revision is null or p_action is null or p_action not in ('approve','dismiss') then return false; end if;
@@ -72,6 +73,7 @@ end $$;
 revoke all on function public.geocode_snapshot(public.locations) from public,anon,authenticated;
 revoke all on function public.store_geocode_proposal(uuid,jsonb,jsonb) from public,anon,authenticated;
 revoke all on function public.review_geocode_proposal(uuid,uuid,text) from public,anon,authenticated;
+grant execute on function public.geocode_snapshot(public.locations) to service_role;
 grant execute on function public.store_geocode_proposal(uuid,jsonb,jsonb) to service_role;
 grant execute on function public.review_geocode_proposal(uuid,uuid,text) to service_role;
 commit;

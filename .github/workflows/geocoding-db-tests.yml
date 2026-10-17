@@ -3,8 +3,6 @@ name: Geocoding database checks
 on:
   pull_request:
     branches: [main]
-  push:
-    branches: [codex/reviewed-location-geocoding]
 
 permissions:
   contents: read
@@ -67,4 +65,3 @@ jobs:
           SQL
       - name: Run address-lookup and existing unit tests
         run: node --test tests/*.test.mjs
-
