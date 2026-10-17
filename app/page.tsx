@@ -1,14 +1,46 @@
 
 import Link from "next/link";
 
+
 const categories = [
-  { icon: "🏨", name: "Hotels & Stays", description: "Military-friendly places to stay" },
-  { icon: "🍽️", name: "Food & Dining", description: "Savings on meals and treats" },
-  { icon: "🎟️", name: "Attractions", description: "Explore more for less" },
-  { icon: "🛍️", name: "Shopping", description: "Everyday military savings" },
-  { icon: "🏕️", name: "Outdoor Adventures", description: "Get out and discover" },
-  { icon: "✈️", name: "Travel", description: "Make your next trip count" },
+  {
+    icon: "🏨",
+    name: "Hotels & Stays",
+    category: "hotel",
+    description: "Military-friendly places to stay",
+  },
+  {
+    icon: "🍽️",
+    name: "Food & Dining",
+    category: "food",
+    description: "Savings on meals and treats",
+  },
+  {
+    icon: "🎟️",
+    name: "Attractions",
+    category: "attraction",
+    description: "Explore more for less",
+  },
+  {
+    icon: "🛍️",
+    name: "Shopping",
+    category: "shopping",
+    description: "Everyday military savings",
+  },
+  {
+    icon: "🏕️",
+    name: "Outdoor Adventures",
+    category: "tour",
+    description: "Get out and discover",
+  },
+  {
+    icon: "✈️",
+    name: "Travel & Entertainment",
+    category: "entertainment",
+    description: "Make your next trip count",
+  },
 ];
+
 
 const destinations = [
   {
@@ -74,7 +106,7 @@ export default function Home() {
           {categories.map((category) => (
             <Link
               key={category.name}
-              href={`/explore?category=${encodeURIComponent(category.name)}`}
+              href={`/explore?category=${encodeURIComponent(category.category)}`}
               className="dp-category-card"
             >
               <span className="dp-category-icon">{category.icon}</span>
