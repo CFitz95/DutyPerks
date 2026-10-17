@@ -23,7 +23,7 @@ export default async function Cruises({ searchParams }: { searchParams: Promise<
       <p>Taxes, port expenses, gratuities, transportation and extras may be payable. DutyPerks shares program information; availability, eligibility and bookings are handled by the cruise line. Compare the final total before paying.</p>
     </aside>
     <form className="cruise-filter" action="/cruises" method="get">
-      <label>Offer type<select name="type" defaultValue={type}>
+      <label>Offer type<select key={type} name="type" defaultValue={type}>
         <option value="">All cruise offers</option>
         {cruiseTypes.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
       </select></label>
