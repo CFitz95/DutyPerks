@@ -2,8 +2,9 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getAdmin } from "../../../lib/admin-auth";
 import { privateSupabase } from "../../../lib/private-supabase";
+import AddressEditForm from "./AddressEditForm";
 export const dynamic="force-dynamic";
-const notices:Record<string,string>={checked:"Address check complete. Proposals need your review.",partial:"Some lookups failed. See the notes below.",saved:"Reviewed coordinates saved.",dismissed:"Proposal dismissed without changing coordinates.",stale:"Nothing saved. This proposal is old, already reviewed, or the location has changed.",unavailable:"The queue is unavailable. Check the geocoding migration and server settings."};
+const notices:Record<string,string>={address_updated:"Address saved. Click Check missing addresses now for a fresh proposal.",address_invalid:"Address not saved. Enter a street address, city, two-letter state and optional five-digit ZIP.",address_stale:"Nothing saved. The location changed or already has coordinates. Reload before editing.",checked:"Address check complete. Proposals need your review.",partial:"Some lookups failed. See the notes below.",saved:"Reviewed coordinates saved.",dismissed:"Proposal dismissed without changing coordinates.",stale:"Nothing saved. This proposal is old, already reviewed, or the location has changed.",unavailable:"The queue is unavailable. Check the geocoding migration and server settings."};
 export default async function LocationsPage({searchParams}:{searchParams:Promise<Record<string,string|string[]|undefined>>}) {
   if(!await getAdmin()) redirect("/admin");
   const params=await searchParams;const notice=typeof params.notice==="string" ? notices[params.notice] : null;
@@ -22,8 +23,10 @@ export default async function LocationsPage({searchParams}:{searchParams:Promise
     <p>MWR is an offer organization, not an attraction. Organization resources stay unpinned. Ticket purchase offices are excluded here; each offer needs its actual attraction or activity destination.</p>
     <p>{locations.data?.length ?? 0} destinations without coordinates (up to 500 shown). {pending.length} review entries.</p>
     {!pending.length && <p>No proposals yet. Run an address check to begin.</p>}
-    {pending.map(r=>{
-      const l=current.get(r.location_id)!;const s=r.snapshot;const p=r.proposal;
+    {(locations.data ?? []).map(l=>{
+      const r=pending.find(review=>review.location_id===l.id);
+      if(!r) return <article key={l.id} style={{border:"1px solid #ddd",padding:16,margin:"20px 0",borderRadius:8}}><h2>{l.name ?? "Location"}</h2><p>{[l.address,l.city,l.state,l.postal_code].filter(Boolean).join(", ")}</p><p>No active proposal. Edit the address or run an address check.</p><AddressEditForm location={l}/></article>;
+      const s=r.snapshot;const p=r.proposal;
       const stale=Object.keys(s).some(k=>s[k]!==l[k as keyof typeof l]);
       const point=typeof p.latitude==='number' && typeof p.longitude==='number' && Number.isFinite(p.latitude) && Number.isFinite(p.longitude) && Math.abs(p.latitude)<=90 && Math.abs(p.longitude)<=180;
       const map=point ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(p.latitude+','+p.longitude)}` : null;
@@ -37,6 +40,7 @@ export default async function LocationsPage({searchParams}:{searchParams:Promise
           {r.status==='review' && point && <><label><input type="checkbox" name="confirmed" value="yes"/> I checked the full returned address and map pin, including the correct entrance or activity departure point.</label><p><button name="action" value="approve">Save reviewed coordinates</button></p></>}
           <button name="action" value="dismiss">Dismiss proposal</button>
         </form>}
+        <AddressEditForm location={l}/>
       </article>;
     })}
   </main>;
