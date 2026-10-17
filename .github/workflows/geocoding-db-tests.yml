@@ -54,11 +54,17 @@ jobs:
         run: psql -v ON_ERROR_STOP=1 -f supabase/test_geocoding.sql
       - name: Verify test fixtures rolled back
         run: |
+          psql -v ON_ERROR_STOP=1 -f supabase/leads.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/leads.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/test_leads.sql
+      - name: Verify all test fixtures rolled back
+        run: |
           psql -v ON_ERROR_STOP=1 <<'SQL'
           DO $$
           BEGIN
             IF EXISTS (SELECT 1 FROM public.locations)
-              OR EXISTS (SELECT 1 FROM public.location_geocode_reviews) THEN
+              OR EXISTS (SELECT 1 FROM public.location_geocode_reviews)
+              OR EXISTS (SELECT 1 FROM public.social_leads) THEN
               RAISE EXCEPTION 'Disposable test fixtures were not rolled back';
             END IF;
           END $$;
