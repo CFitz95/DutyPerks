@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
 const links = [
-  ['/explore', 'Find offers'], ['/cruises', 'Cruises'],
+  ['/explore', 'Find offers'], ['/plan', 'My trip'], ['/cruises', 'Cruises'],
   ['/install', 'Install app'], ['/feedback', 'Give feedback'],
 ] as const;
 export default function MainNav() {
