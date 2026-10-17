@@ -8,6 +8,7 @@ export default function Home() {
       <p>Explore verified offers, check who qualifies, and go straight to the official source.</p>
       <div className="actions" style={{marginTop:24}}>
         <Link className="button-link" href="/explore">Find an offer</Link>
+        <Link className="button-link secondary" href="/cruises">Explore cruise offers</Link>
         <Link className="button-link secondary" href="/install">Add to your phone</Link>
       </div>
       <section style={{marginTop:40}}><h2>Choose your area</h2><div className="card-grid">
