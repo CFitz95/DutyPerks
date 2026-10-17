@@ -114,14 +114,59 @@ export default async function Explore({ searchParams }: { searchParams: Promise<
             ))}
           </>}
       </section>
-      {!invalid && matchingMwrResources(location).length > 0 && <section aria-label="Official MWR resources" style={{marginTop:32}}>
-        <h2>MWR tickets and travel resources</h2>
-        <p>These official resources are separate from the verified benefit results. Eligibility varies by ticket and program; a selected military status does not guarantee access. The purchase office may be in a different city from the attraction.</p>
-        {matchingMwrResources(location).map(resource => <article key={resource.area} style={{border:"1px solid #ddd",padding:16,marginBottom:16,borderRadius:8}}>
-          <h3>{resource.title}</h3><p>Purchase offices: {resource.location}</p>
-          <p>{resource.detail}</p><a href={resource.url} target="_blank" rel="noopener noreferrer">View official MWR listings and prices</a>
-        </article>)}
-      </section>}
+      
+{!invalid && matchingMwrResources(location).length > 0 && (
+  <section className="dp-mwr-section" aria-label="Official MWR resources">
+    <div className="dp-mwr-heading">
+      <span className="dp-kicker">OFFICIAL MILITARY RESOURCES</span>
+      <h2>Tickets, attractions & adventures</h2>
+      <p>
+        Explore official Morale, Welfare and Recreation (MWR)
+        ticket and travel resources available for your selected area.
+        Prices and eligibility vary by program.
+      </p>
+    </div>
+
+    <div className="dp-mwr-grid">
+      {matchingMwrResources(location).map((resource) => (
+        <article key={resource.area} className="dp-mwr-card">
+          <div className="dp-mwr-card-top">
+            <span className="dp-mwr-icon" aria-hidden="true">🎟️</span>
+            <span className="dp-mwr-badge">Official MWR Resource</span>
+          </div>
+
+          <h3>{resource.title}</h3>
+
+          <p className="dp-mwr-location">
+            📍 Purchase offices: {resource.location}
+          </p>
+
+          <p className="dp-mwr-description">
+            {resource.detail}
+          </p>
+
+          <div className="dp-mwr-footer">
+            <p>
+              <strong>Good to know:</strong> Eligibility and ticket
+              prices depend on the specific program. Confirm details
+              with the official provider.
+            </p>
+
+            <a
+              href={resource.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="dp-mwr-button"
+            >
+              View tickets & prices ↗
+            </a>
+          </div>
+        </article>
+      ))}
+    </div>
+  </section>
+)}
+
     </main>
   );
 }
