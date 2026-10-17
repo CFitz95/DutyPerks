@@ -9,7 +9,7 @@ self.addEventListener('activate', event => {
 self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
   if (event.request.method !== 'GET' || event.request.mode !== 'navigate' || url.origin !== self.location.origin) return;
-  if (!['/', '/explore', '/install', '/feedback', '/plan'].includes(url.pathname)) return;
+  if (!['/', '/explore', '/cruises', '/install', '/feedback', '/plan'].includes(url.pathname)) return;
   event.respondWith(fetch(new Request(event.request, {cache:'no-store'})).catch(async () => {
     const fallback = await caches.match('/offline.html', {cacheName:SHELL});
     return fallback || new Response('Connect to the internet to use DutyPerks.', {status:503,headers:{'Content-Type':'text/plain'}});

@@ -2,6 +2,7 @@ import React from "react";
 import Link from "next/link";
 import type { Metadata, Viewport } from "next";
 import AppSetup from "./components/AppSetup";
+import MainNav from "./components/MainNav";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -21,7 +22,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <a className="skip-link" href="#page-content">Skip to content</a>
         <div className="site-shell">
           <header className="site-header"><Link className="brand" href="/">DutyPerks</Link>
-            <nav aria-label="Main navigation"><Link href="/explore">Find offers</Link><Link href="/install">Install app</Link><Link href="/feedback">Give feedback</Link></nav>
+            <MainNav />
           </header>
           <div id="page-content">{children}</div>
           <footer className="site-footer"><p>DutyPerks beta · Confirm eligibility and terms with the provider before booking.</p><Link href="/feedback">Feedback and privacy</Link></footer>
