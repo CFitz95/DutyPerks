@@ -54,6 +54,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
       {notice && <p role="status">{notice}</p>}
       <div style={{display:"flex",gap:20}}>
         <Link href="/admin/feedback">Read tester feedback</Link>
+        <Link href="/admin/leads">Research discount leads</Link>
         <Link href="/admin/locations">Review location coordinates</Link>
         <form action="/api/admin/run" method="post"><button>Check sources now</button></form>
         <form action="/api/admin/logout" method="post"><button>Sign out</button></form>
