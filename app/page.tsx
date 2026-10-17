@@ -16,7 +16,7 @@ export default function Home() {
         <article className="card"><h3>Whidbey Island</h3><p>Explore island offers and NAS Whidbey MWR ticket resources.</p><Link href="/explore?location=Whidbey%20Island">Explore Whidbey Island</Link></article>
       </div></section>
       <section className="card"><h2>Help shape DutyPerks</h2><p>We’re testing with the military community. Try finding an offer you would use, then tell us what worked or what was missing.</p><Link href="/feedback">Share your feedback</Link></section>
-      <p>Trip planning is coming later. <Link href="/plan">View the planning preview</Link>.</p>
+      <section className="card"><h2>Turn offers into a day out</h2><p>Save offers, arrange them by day, and open directions. Your itinerary stays on your device—no account needed.</p><Link href="/plan">Plan my trip</Link></section>
     </main>
   );
 }

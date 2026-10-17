@@ -2,6 +2,7 @@ import Link from "next/link";
 import { z } from "zod";
 import { supabaseServer } from "../../lib/supabase";
 import { matchingMwrResources } from "../../lib/mwr-resources";
+import SaveOffer from "../components/SaveOffer";
 
 export const dynamic = "force-dynamic";
 
@@ -103,6 +104,7 @@ export default async function Explore({ searchParams }: { searchParams: Promise<
                 <p>Verified {dateLabel(benefit.verified_at)}{benefit.expires_at ? ` · Offer ends ${benefit.expires_at}` : ""}</p>
                 <a href={benefit.source_url} target="_blank" rel="noopener noreferrer">View verification source{benefit.source_name ? `: ${benefit.source_name}` : ""}</a>
                 <p>Confirm terms with the provider before booking.</p>
+                <SaveOffer offer={{id:benefit.id,title:benefit.title,business_name:benefit.business_name,city:benefit.city,state:benefit.state,source_url:benefit.source_url,verified_at:benefit.verified_at,expires_at:benefit.expires_at,requirements:benefit.requirements??''}} />
               </article>
             ))}
           </>}
